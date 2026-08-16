@@ -66,7 +66,7 @@ def load_sst_manifest():
 def load_sst_pngs():
     """Lee los PNGs y los devuelve como base64 data URIs."""
     import base64
-    png_dir = ROOT/"data/sst_pngs_masked"  # versión enmascarada (sin tierra)
+    png_dir = ROOT/"data/sst_pngs_global_masked"  # GLOBAL enmascarado
     out = {}
     for png in sorted(png_dir.glob("sst_*.png")):
         ym = png.stem.replace("sst_","")
@@ -127,7 +127,7 @@ def build_html(window=3):
     
     data_blob = json.dumps({
         "months": months, "events": events, "by_month": by_month,
-        "sst_bounds": [[-60.0, -89.875], [30.125, -29.875]],
+        "sst_bounds": [[-60.0, 0.0], [60.0, 360.0]],  # GLOBAL: todo el mundo en 0..360
         "sst_pngs": sst_pngs,
     })
     
