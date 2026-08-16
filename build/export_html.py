@@ -66,7 +66,7 @@ def load_sst_manifest():
 def load_sst_pngs():
     """Lee los PNGs y los devuelve como base64 data URIs."""
     import base64
-    png_dir = ROOT/"data/sst_pngs"
+    png_dir = ROOT/"data/sst_pngs_masked"  # versión enmascarada (sin tierra)
     out = {}
     for png in sorted(png_dir.glob("sst_*.png")):
         ym = png.stem.replace("sst_","")
@@ -259,7 +259,7 @@ function setSSTLayer(ym) {{
   if (sstLayer) {{ map.removeLayer(sstLayer); sstLayer = null; }}
   const url = SST_PNGS[ym];
   if (url) {{
-    sstLayer = L.imageOverlay(url, SST_BOUNDS, {{opacity:0.7,interactive:false}});
+    sstLayer = L.imageOverlay(url, SST_BOUNDS, {{opacity:0.65,interactive:false}});
     sstLayer.addTo(map);
   }}
 }}
@@ -383,8 +383,20 @@ togSST.addEventListener('change', () => {{
   else if (sstLayer) {{ map.removeLayer(sstLayer); sstLayer = null; }}
 }});
 togEC.addEventListener('change', () => {{
-  if (togEC.checked) map.addLayer(ecuadorLayer);
-  else map.removeLayer(ecuadorLayer);
+  if (togEC.checked) {{
+    map.addLayer(ecuadorLayer);
+    // Feedback: pulse breve
+    ecuadorLayer.eachLayer(l => {{
+      if (l.setStyle) {{
+        l.setStyle({{fillOpacity: 0.4, weight: 4}});
+        setTimeout(() => l.setStyle({{fillOpacity: 0.15, weight: 2.5}}), 400);
+      }}
+    }});
+    // Centrar Ecuador en el mapa
+    map.fitBounds(ecuadorLayer.getBounds(), {{padding:[80,80], maxZoom:6, animate:true, duration:1.5}});
+  }} else {{
+    map.removeLayer(ecuadorLayer);
+  }}
 }});
 
 // Leyenda colapsable
