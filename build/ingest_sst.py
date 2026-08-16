@@ -165,7 +165,74 @@ def main():
         json.dump(manifest, f, indent=2)
     
     total_mb = sum(m["size_kb"] for m in manifest.values()) / 1024
-    print(f"✓ {len(manifest)} PNGs · {total_mb:.2f} MB total")
+    # Aplicar máscara tierra/océano
+    try:
+        from shapely.geometry import shape
+        from shapely.prepared import prep
+        land_path = ROOT/"data/land_mask.geojson"
+        if land_path.exists():
+            print(f"\n=== Aplicando máscara tierra/océano ===")
+            with open(land_path) as f:
+                land_data = json.load(f)
+            land_geoms = []
+            for feat in land_data["features"]:
+                g = shape(feat["geometry"])
+                if g.geom_type == "MultiPolygon":
+                    for p in g.geoms: land_geoms.append(prep(p))
+                else:
+                    land_geoms.append(prep(g))
+            def is_land(lat, lon):
+                pt = type(land_geoms[0])([lon, lat]) if False else None  # noqa
+                from shapely.geometry import Point
+                return any(g.contains(Point(lon, lat)) for g in land_geoms)
+            masked_dir = ROOT/"data/sst_pngs_masked"
+            masked_dir.mkdir(exist_ok=True)
+            import numpy as np
+            LAT_MIN, LAT_MAX = -60.0, 30.125
+            LON_MIN, LON_MAX = -89.875, -29.875
+            for ym in sorted(results.keys()):
+                d = results[ym]; lat, lon, sst = d.get("lat"), d.get("lon"), d.get("sst")
+                if not (lat and lon and sst): continue
+                nl, no = len(lat), len(lon)
+                img = Image.new("RGBA", (no, nl), (0,0,0,0))
+                pixels = img.load(); idx = 0
+                lats = np.linspace(LAT_MIN, LAT_MAX, nl)
+                lons = np.linspace(LON_MIN, LON_MAX, no)
+                # Pre-compute mask
+                mask = np.zeros((nl, no), dtype=bool)
+                for i in range(nl):
+                    for j in range(no):
+                        mask[i,j] = is_land(lats[i], lons[j])
+                arr = np.array(img)
+                idx = 0
+                for i in range(nl):
+                    for j in range(no):
+                        if idx < len(sst):
+                            from PIL import Image as I
+                            t = sst[idx]
+                            # Aplicar color
+                            if t < -8: arr[i,j] = (0,0,0,0)
+                            else:
+                                t_min, t_max = -2, 32
+                                t = max(t_min, min(t_max, t))
+                                norm = (t - t_min)/(t_max - t_min)
+                                stops = [(0,(10,10,100)),(.2,(10,80,200)),(.35,(10,180,220)),
+                                         (.5,(50,230,100)),(.65,(240,230,50)),(.8,(255,150,30)),(1,(255,30,30))]
+                                for k in range(len(stops)-1):
+                                    if norm <= stops[k+1][0]:
+                                        tt = (norm-stops[k][0])/(stops[k+1][0]-stops[k][0])
+                                        r = int(stops[k][1][0]+(stops[k+1][1][0]-stops[k][1][0])*tt)
+                                        g = int(stops[k][1][1]+(stops[k+1][1][1]-stops[k][1][1])*tt)
+                                        b = int(stops[k][1][2]+(stops[k+1][1][2]-stops[k][1][2])*tt)
+                                        arr[i,j] = (r,g,b,180); break
+                            idx += 1
+                arr[mask, 3] = 0
+                Image.fromarray(arr, mode="RGBA").save(masked_dir / f"sst_{ym}.png", optimize=True)
+            print(f"  ✓ {len(manifest)} PNGs enmascarados en {masked_dir}")
+    except ImportError:
+        print("  ⚠ shapely no instalado, saltando máscara")
+    
+    print(f"\n✓ {len(manifest)} PNGs · {total_mb:.2f} MB total")
 
 if __name__ == "__main__":
     main()
