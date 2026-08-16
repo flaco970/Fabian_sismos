@@ -1,0 +1,33 @@
+# Logs
+logs/
+*.log
+__pycache__/
+*.pyc
+
+# Datos temporales / privados
+data/sst_raw.json
+data/sst_monthly.json
+data/sismos.db-journal
+data/sismos.db-wal
+data/sismos.db-shm
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Builds locales
+/build/leaflet_embebido/*.css.map
+/build/leaflet_embebido/*.js.map
+
+# Mantener en repo
+!data/sismos.db
+!data/sst_pngs/
+!data/ecuador.geojson
+!data/plates.geojson
+!data/sst_manifest.json
