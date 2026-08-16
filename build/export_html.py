@@ -64,16 +64,9 @@ def load_sst_manifest():
     return json.loads(p.read_text())
 
 def load_sst_pngs():
-    """Lee los PNGs y los devuelve como base64 data URIs."""
-    import base64
-    png_dir = ROOT/"data/sst_pngs_global_masked"  # GLOBAL enmascarado
-    out = {}
-    for png in sorted(png_dir.glob("sst_*.png")):
-        ym = png.stem.replace("sst_","")
-        with open(png,"rb") as f:
-            data = base64.b64encode(f.read()).decode()
-        out[ym] = f"data:image/png;base64,{data}"
-    return out
+    """SST deshabilitado — retorna dict vacío."""
+    return {}
+
 
 def load_events(db_path):
     conn = sqlite3.connect(str(db_path))
@@ -194,14 +187,11 @@ html,body{{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSyst
   <div class="leg-item"><span class="leg-dot" style="background:#4cc9f0"></span>M 4.5–4.9</div>
   <div class="leg-item"><span class="leg-line"></span>Límite placa</div>
   <div class="leg-item"><span class="leg-dot" style="background:#00ff88"></span>Ecuador</div>
-  <div class="sst-legend">
-    🌡 SST mensual
-    <div class="sst-bar"></div>
-    <div class="sst-labels"><span>0°C</span><span>15°</span><span>30°C</span></div>
-  </div>
   <div class="toggles">
-    <label><input type="checkbox" id="togSST" checked> SST</label>
     <label><input type="checkbox" id="togEC" checked> Ecuador</label>
+  </div>
+  <div style="margin-top:6px;color:#666;font-size:9px;font-style:italic">
+    SST experimental — deshabilitado
   </div>
 </div>
 
@@ -253,10 +243,12 @@ const ecuadorLayer = L.geoJSON(ECUADOR, {{
   onEachFeature:(f,l)=>l.bindTooltip(f.properties.name,{{sticky:true,className:'plate-tooltip'}})
 }}).addTo(map);
 
-// SST layer (imageOverlay por mes)
+// SST desactivado por default — código preservado para futuro
 let sstLayer = null;
 function setSSTLayer(ym) {{
   if (sstLayer) {{ map.removeLayer(sstLayer); sstLayer = null; }}
+  // SST desactivado por default. Activar con: window.togSSTEnabled = true
+  if (!window.togSSTEnabled) return;
   const url = SST_PNGS[ym];
   if (url) {{
     sstLayer = L.imageOverlay(url, SST_BOUNDS, {{opacity:0.65,interactive:false}});
@@ -377,11 +369,16 @@ playBtn.addEventListener('click', () => {{
   }}
 }});
 
-// Toggles
+// SST deshabilitado por default (experimental). Para activar:
+//   window.togSSTEnabled = true; updateSlider(currentIdx);
+// (descomentar el bloque siguiente si querés el checkbox de SST de vuelta)
+/*
 togSST.addEventListener('change', () => {{
+  window.togSSTEnabled = togSST.checked;
   if (togSST.checked) setSSTLayer(MONTHS[currentIdx]);
   else if (sstLayer) {{ map.removeLayer(sstLayer); sstLayer = null; }}
 }});
+*/
 togEC.addEventListener('change', () => {{
   if (togEC.checked) {{
     map.addLayer(ecuadorLayer);
